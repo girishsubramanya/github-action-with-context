@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - GitHub Workflow Generator</title>
+    <!-- GitHub Icon in title -->
+    <link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .admin-container {
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        th {
+            background-color: #f6f8fa;
+            font-weight: 600;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .btn-approve {
+            background-color: #2da44e;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 12px;
+        }
+        .btn-reject {
+            background-color: #cf222e;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-approved {
+            background-color: #dafbe1;
+            color: #1a7f37;
+        }
+        .status-pending {
+            background-color: #fff8c5;
+            color: #9a6700;
+        }
+        .flashes {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        .flash {
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        .flash.success {
+            background-color: #dafbe1;
+            color: #1a7f37;
+            border: 1px solid rgba(27,31,36,0.15);
+        }
+        .flash.danger {
+            background-color: #ffebe9;
+            color: #cf222e;
+            border: 1px solid rgba(27,31,36,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+             <!-- GitHub Icon -->
+            <svg height="32" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="32" data-view-component="true" class="octicon octicon-mark-github" style="fill: white;">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+            <h1>Admin Dashboard</h1>
+        </div>
+        <div>
+            <a href="{{ url_for('index') }}" style="color: white; margin-right: 15px; text-decoration: none;">Home</a>
+            <a href="{{ url_for('logout') }}" style="color: white; text-decoration: none;">Logout</a>
+        </div>
+    </div>
+
+    <div class="admin-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="flash {{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <div class="admin-header">
+            <h2>Users Management</h2>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Status</th>
+                    <th>Role</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>
+                        {% if user.is_approved %}
+                            <span class="status-badge status-approved">Approved</span>
+                        {% else %}
+                            <span class="status-badge status-pending">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ 'Admin' if user.is_admin else 'User' }}</td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            {% if not user.is_approved %}
+                                <form action="{{ url_for('approve_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn-approve">Approve</button>
+                                </form>
+                                <form action="{{ url_for('reject_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn-reject">Reject</button>
+                                </form>
+                            {% else %}
+                                 {% if not user.is_admin %}
+                                    <form action="{{ url_for('reject_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                        <button type="submit" class="btn-reject">Delete</button>
+                                    </form>
+                                 {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

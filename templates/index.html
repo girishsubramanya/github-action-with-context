@@ -1,0 +1,192 @@
+<!--
+Version: v1
+Date: 2025-12-23
+Design, Author, Updated by: Girish Subramanya <girish.subramanya@daimlertruck.com>, VCP, B&I, DTICI
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Workflow Generator</title>
+    <!-- GitHub Icon in title -->
+    <link rel="icon" href="https://github.githubassets.com/favicons/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <!-- GitHub Icon -->
+            <svg height="32" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="32" data-view-component="true" class="octicon octicon-mark-github" style="fill: white;">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+            <h1>GitHub Workflow Generate</h1>
+        </div>
+
+        <div class="tab-controls">
+            <button class="tab-btn active" data-tab="tab-editor">Editor</button>
+            <button class="tab-btn" data-tab="tab-predefined">Predefined Actions</button>
+            <button class="tab-btn" data-tab="tab-import">Import</button>
+        </div>
+
+        <div class="header-actions">
+            {% if current_user.is_authenticated %}
+            <button id="save-work-btn" style="background-color: #2da44e; margin-right: 10px;">Save Work</button>
+            {% endif %}
+            <button id="save-template-btn" style="background-color: #8957e5; margin-right: 10px;">Save as Template</button>
+            <button id="generate-btn">Generate YAML</button>
+            <button id="download-btn" style="display: none; margin-left: 10px; background-color: #0969da;">Download</button>
+            {% if current_user.is_authenticated %}
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin') }}" style="color: white; margin-left: 15px; text-decoration: none; font-size: 14px;">Admin</a>
+                {% endif %}
+                <a href="{{ url_for('change_password') }}" style="color: white; margin-left: 15px; text-decoration: none; font-size: 14px;">Change Password</a>
+                <a href="{{ url_for('logout') }}" style="color: white; margin-left: 15px; text-decoration: none; font-size: 14px;">Logout</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tab: Editor -->
+    <div id="tab-editor" class="tab-content active">
+        <div class="container">
+            <!-- Sidebar: Toolbox -->
+            <div class="sidebar toolbox">
+                <h3>Toolbox</h3>
+
+                <div class="toolbox-section">
+                    <h4>Triggers</h4>
+                    <div class="draggable-item" draggable="true" data-type="trigger" data-value="push">Push</div>
+                    <div class="draggable-item" draggable="true" data-type="trigger" data-value="pull_request">Pull Request</div>
+                    <div class="draggable-item" draggable="true" data-type="trigger" data-value="workflow_dispatch">Workflow Dispatch</div>
+                    <div class="draggable-item" draggable="true" data-type="trigger" data-value="schedule">Schedule</div>
+                </div>
+
+                <div class="toolbox-section">
+                    <h4>Jobs</h4>
+                    <div class="draggable-item" draggable="true" data-type="job" data-default-name="build">Job</div>
+                </div>
+
+                <div class="toolbox-section">
+                    <h4>Steps</h4>
+                    {% if steps_config %}
+                        {% for step in steps_config %}
+                        <div class="draggable-item" draggable="true" data-type="step" data-subtype="{{ step.subtype }}">{{ step.label }}</div>
+                        {% endfor %}
+                    {% else %}
+                        <!-- Fallback if no config -->
+                        <div class="draggable-item" draggable="true" data-type="step" data-subtype="run">Run Command</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Main: Canvas -->
+            <div class="main-content">
+                <div class="canvas" id="workflow-canvas">
+                    <div class="workflow-header">
+                        <label>Workflow Name:</label>
+                        <input type="text" id="workflow-name" value="CI/CD Pipeline">
+                    </div>
+
+                    <div class="yaml-preview-section">
+                        <label>YAML Preview</label>
+                        <textarea id="yaml-output" readonly></textarea>
+                    </div>
+
+                    <div class="drop-zone" id="triggers-zone">
+                        <div class="zone-label">Drop Triggers Here</div>
+                        <!-- Triggers will be dropped here -->
+                    </div>
+
+                    <div class="drop-zone" id="jobs-zone">
+                        <div class="zone-label">Drop Jobs Here</div>
+                        <!-- Jobs will be dropped here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar: Properties -->
+            <div class="sidebar properties">
+                <h3>Properties</h3>
+                <div id="properties-form">
+                    <p class="placeholder-text">Select an element to edit its properties.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Predefined Actions -->
+    <div id="tab-predefined" class="tab-content">
+        <div class="container" style="flex-direction: row; gap: 20px; padding: 20px;">
+            <div class="sidebar toolbox" style="width: 300px;">
+                <h3>Predefined Workflows</h3>
+                <div class="toolbox-section" id="predefined-list">
+                    <!-- List will be populated by JS -->
+                </div>
+            </div>
+            <div class="main-content" style="flex: 1; display: flex; flex-direction: column;">
+                <h3>Workflow Preview</h3>
+                <textarea id="predefined-yaml-preview" readonly style="flex: 1; width: 100%; font-family: monospace; padding: 10px; border: 1px solid #ddd; border-radius: 6px;"></textarea>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="load-predefined-btn" class="add-btn" style="padding: 10px 20px; font-size: 14px;" disabled>Load & Edit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Import -->
+    <div id="tab-import" class="tab-content">
+        <div class="container" style="display: block; padding: 20px; max-width: 800px; margin: 0 auto;">
+            <h3>Import YAML</h3>
+            <p>Paste your GitHub Actions YAML below or load from file to import it into the editor.</p>
+
+            <div style="margin-bottom: 10px; text-align: right;">
+                <input type="file" id="import-file-input" accept=".yml,.yaml" style="display: none;">
+                <button id="import-open-file-btn" class="add-btn" style="padding: 5px 10px; font-size: 12px; background-color: #f0f0f0; color: #333; border: 1px solid #ccc;">Load from File</button>
+            </div>
+
+            <textarea id="import-yaml-area" rows="20" style="width: 100%; padding: 10px; font-family: monospace; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 20px;"></textarea>
+            <div style="text-align: right;">
+                <button id="import-btn" class="add-btn" style="padding: 10px 20px; font-size: 14px;">Load and Edit</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-left">&copy; Vehicle Compute Platform, Build & Integration, DTICI,  2026</div>
+        <div class="footer-right">
+            <button id="contact-btn">Contact</button>
+        </div>
+    </footer>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <p>Contact Girish Subramanya &lt;<a href="mailto:girish.subramanya@daimlertruck.com">girish.subramanya@daimlertruck.com</a>&gt;</p>
+        </div>
+    </div>
+
+    <!-- Resume Work Modal -->
+    <div id="resume-work-modal" class="modal">
+        <div class="modal-content">
+            <h3>Resume Work</h3>
+            <p>We found unfinished work. Would you like to resume from where you left off?</p>
+            <div id="resume-list" style="margin: 15px 0;">
+                <!-- List populated by JS -->
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button id="start-new-btn" style="background-color: #f0f0f0; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Start New</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pass config to JS -->
+    <script>
+        window.stepsConfig = {{ steps_config | tojson | safe }};
+        window.workflowsConfig = {{ workflows_config | tojson | safe }};
+        window.triggerConfig = {{ trigger_config | tojson | safe }};
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

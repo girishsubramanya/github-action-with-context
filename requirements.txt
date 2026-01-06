@@ -1,0 +1,6 @@
+flask
+pyyaml
+flask-sqlalchemy
+flask-login
+flask-bcrypt
+gunicorn

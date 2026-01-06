@@ -1,0 +1,199 @@
+[
+    {
+        "label": "Blackduck Scan",
+        "subtype": "Blackduck-scan",
+        "steps": [
+            {
+                "name": "Run Black Duck Scan for FOSS",
+                "uses": "DTTF/actions-blackduck@v1",
+                "with": {
+                    "project-name": { "value": "project-name", "description": "The name of the project in Blackduck" , "mandatory": true, "selected": true},
+                    "project-version": { "value": "version-name", "description": "The version of the project", "mandatory": true, "selected": true },
+                    "api-token": { "value": "blackduck-api-token", "description": "API Token for Blackduck" , "mandatory": true, "selected": true},
+                    "relative-scan-path": { "value": ".", "description": "Relative path to scan, provide in double quotes ex : \".\" for current path" , "mandatory": true, "selected": true}
+                }
+            }
+        ]
+    },
+	{
+        "label": "Clone Repo default ref",
+        "subtype": "checkout",
+        "steps": [
+            {
+                "name": "Checkout",
+                "uses": "actions/checkout@v3"
+            }
+        ]
+    },
+	{
+        "label": "if expression",
+        "subtype": "if expression",
+        "steps": [
+            {
+                "name": "if evaluation",
+                "if": { "value": "expressions", "description": "ex : github.event_name == 'pull_request' or failure()", "mandatory": true, "selected": true }
+            }
+        ]
+    },
+	{
+        "label": "Clone and checkout ref",
+        "subtype": "checkout-ownrepo",
+        "steps": [
+            {
+                "name": "Clone same repo and Chekout Ref",
+                "uses": "actions/checkout@v4",
+				"with":{
+					"ref": { "value": "main","description": "Can be a branch name, tag, or commit SHA","mandatory": true, "selected": true}
+				}
+            }
+        ]
+    },
+	{
+        "label": "Clone checkout other repo",
+        "subtype": "checkout-ext-repo",
+        "steps": [
+            {
+                "name": "checkout external repo",
+                "uses": "actions/checkout@v4",
+				"with":{
+					"repository": { "value": "ORG-name/repo-name", "description": "ORG-name/repo-name","mandatory": true, "selected": true},
+					"token": { "value": "${{ secrets.REPO_PAT }", "description": "Use the PAT to access repo", "mandatory": true, "selected": true},
+					"ref": { "value": "main", "description": "Can be a branch name, tag, or commit SHA", "mandatory": true, "selected": true},
+					"path": { "value": "data # Clones into a subdirectory","description": "Path of subdirectory to clone","mandatory": false, "selected": true}
+				}
+            }
+        ]
+    },
+	{
+        "label": "Checkout Repo (SSH)",
+        "subtype": "checkout-ssh",
+        "steps": [
+            {
+                "name": "Checkout (SSH)",
+                "uses": "actions/checkout@v4",
+                "with": {
+                    "repository": { "value": "${{ inputs.gclient-repo-path }}", "description": "Repository path", "mandatory": true, "selected": true },
+                    "ssh-key": { "value": "${{ secrets.deploy-key-secret }}", "description": "SSH Key for deployment", "mandatory": true, "selected": true },
+                    "ref": { "value": "${{ inputs.gclient-git-ref }}", "description": "Git reference", "mandatory": false, "selected": true },
+                    "path": { "value": "${{ inputs.gclient-clone-path }}", "description": "Path to clone to", "mandatory": false, "selected": false }
+                }
+            }
+        ]
+    },
+	{
+        "label": "Run Command",
+        "subtype": "run",
+        "steps": [
+            {
+                "name": "Run script",
+                "run": { "value": "echo \"write commands\"", "description": "provide one line or multiple code snippets", "mandatory": true, "selected": true }
+            }
+        ]
+    },
+    {
+        "label": "Use Action",
+        "subtype": "uses",
+        "steps": [
+            {
+                "name": "Use Action",
+                "uses": "actions/checkout@v3"
+            }
+        ]
+    },
+    {
+        "label": "Reusable Workflow",
+        "subtype": "reusable-workflow",
+        "steps": [
+            {
+                "name": "Reusable Workflow (Update path)",
+                "uses": "actions/checkout@v3"
+            }
+        ]
+    },
+
+
+    {
+        "label": "Setup Python",
+        "subtype": "setup-python",
+        "steps": [
+            {
+                "name": "Setup Python",
+                "uses": "actions/setup-python@v4",
+                "with": {
+                    "python-version": { "value": "3.10", "description": "Python version to set up" }
+                }
+            }
+        ]
+    },
+    {
+        "label": "Setup Node.js",
+        "subtype": "setup-node",
+        "steps": [
+            {
+                "name": "Setup Node",
+                "uses": "actions/setup-node@v3",
+                "with": {
+                    "node-version": { "value": "16", "description": "Node.js version to set up" }
+                }
+            }
+        ]
+    },
+    {
+        "label": "Upload Artifact",
+        "subtype": "upload-artifact",
+        "steps": [
+            {
+                "name": "Upload Artifact",
+                "uses": "actions/upload-artifact@v3",
+                "with": {
+                    "name": { "value": "artifact", "description": "Artifact name" },
+                    "path": { "value": "dist/", "description": "Path to the artifact" }
+                }
+            }
+        ]
+    },
+    {
+        "label": "Download Artifact",
+        "subtype": "download-artifact",
+        "steps": [
+            {
+                "name": "Download Artifact",
+                "uses": "actions/download-artifact@v3",
+                "with": {
+                    "name": { "value": "artifact", "description": "Artifact name" }
+                }
+            }
+        ]
+    },
+    {
+        "label": "Docker Login",
+        "subtype": "docker-login",
+        "steps": [
+            {
+                "name": "Docker Login",
+                "uses": "docker/login-action@v2",
+                "with": {
+                    "username": { "value": "${{ secrets.DOCKERHUB_USERNAME }}", "description": "Docker Hub Username" },
+                    "password": { "value": "${{ secrets.DOCKERHUB_TOKEN }}", "description": "Docker Hub Token" }
+                }
+            }
+        ]
+    },
+    {
+        "label": "Setup SSH & Known Hosts",
+        "subtype": "setup-ssh",
+        "steps": [
+            {
+                "name": "Setup SSH Key Agent",
+                "uses": "webfactory/ssh-agent@v0.9.1",
+                "with": {
+                    "ssh-private-key": { "value": "${{ secrets.deploy-key-secret }}", "description": "Private SSH Key" }
+                }
+            },
+            {
+                "name": "Configure Known Hosts for T3 Domain",
+                "run": "# Scans the T3 domain and adds its host key to ~/.ssh/known_hosts\necho \"Adding host key for ${{ inputs.dt-t3-domain }}\"\nmkdir -p ~/.ssh\nssh-keyscan -H ${{ inputs.dt-t3-domain }} >> ~/.ssh/known_hosts\nchmod 600 ~/.ssh/known_hosts # Set permissions for security"
+            }
+        ]
+    }
+]
