@@ -435,6 +435,20 @@ def load_session_route(session_id):
     
     return jsonify(session.to_dict())
 
+@app.route('/delete_session/<int:session_id>', methods=['DELETE'])
+@login_required
+def delete_session(session_id):
+    session = WorkflowSession.query.get(session_id)
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    if session.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    db.session.delete(session)
+    db.session.commit()
+    return jsonify({'message': 'Session deleted'})
+
 if __name__ == '__main__':
     # Debug mode should be False in production contexts
     app.run(host='0.0.0.0', debug=False, port=5006)

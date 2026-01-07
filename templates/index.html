@@ -32,6 +32,7 @@ Design, Author, Updated by: Girish Subramanya <girish.subramanya@daimlertruck.co
 
         <div class="header-actions">
             {% if current_user.is_authenticated %}
+            <button id="load-work-btn" style="background-color: #0969da; margin-right: 10px;">Load Work</button>
             <button id="save-work-btn" style="background-color: #2da44e; margin-right: 10px;">Save Work</button>
             {% endif %}
             <button id="save-template-btn" style="background-color: #8957e5; margin-right: 10px;">Save as Template</button>
@@ -170,13 +171,27 @@ Design, Author, Updated by: Girish Subramanya <girish.subramanya@daimlertruck.co
     <!-- Resume Work Modal -->
     <div id="resume-work-modal" class="modal">
         <div class="modal-content">
-            <h3>Resume Work</h3>
-            <p>We found unfinished work. Would you like to resume from where you left off?</p>
+            <span id="close-resume-modal" class="close-modal">&times;</span>
+            <h3 id="resume-modal-title">Resume Work</h3>
+            <p id="resume-modal-desc">We found unfinished work. Would you like to resume from where you left off?</p>
             <div id="resume-list" style="margin: 15px 0;">
                 <!-- List populated by JS -->
             </div>
             <div style="text-align: right; margin-top: 20px;">
                 <button id="start-new-btn" style="background-color: #f0f0f0; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Start New</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unsaved Changes Modal -->
+    <div id="unsaved-changes-modal" class="modal" style="z-index: 2000;">
+        <div class="modal-content">
+            <h3>Unsaved Changes</h3>
+            <p>You have unsaved work. What would you like to do before loading?</p>
+            <div style="text-align: right; margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="uc-cancel-btn" style="background-color: #f0f0f0; color: #333; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Cancel</button>
+                <button id="uc-discard-btn" style="background-color: #cf222e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Discard & Load</button>
+                <button id="uc-save-btn" style="background-color: #2da44e; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Save & Load</button>
             </div>
         </div>
     </div>

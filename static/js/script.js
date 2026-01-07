@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const generateBtn = document.getElementById('generate-btn');
     const saveTemplateBtn = document.getElementById('save-template-btn');
     const saveWorkBtn = document.getElementById('save-work-btn');
+    const loadWorkBtn = document.getElementById('load-work-btn');
     const downloadBtn = document.getElementById('download-btn');
     const yamlOutput = document.getElementById('yaml-output');
     const workflowNameInput = document.getElementById('workflow-name');
@@ -1470,40 +1471,33 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => console.error(err));
     });
 
+    function saveWork(callback) {
+        const dataToSave = {
+            name: workflowNameInput.value,
+            data: buildExportObject()
+        };
+
+        fetch('/save_session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataToSave)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.error) {
+                alert('Error saving: ' + data.error);
+            } else {
+                alert('Work saved successfully!');
+                if (callback) callback();
+            }
+        })
+        .catch(err => alert('Error saving: ' + err));
+    }
+
     // Save Work Logic
     if (saveWorkBtn) {
         saveWorkBtn.addEventListener('click', () => {
-            const dataToSave = {
-                name: workflowNameInput.value,
-                data: buildExportObject() // Save the internal structure or the export object? 
-                                        // The export object is cleaner but we might lose some UI state (e.g. collapsed sections?)
-                                        // Actually buildExportObject creates a structure compatible with importWorkflow mostly.
-                                        // But importWorkflow expects `data.jobs` to be object or array?
-                                        // Let's check importWorkflow.
-                                        // importWorkflow handles both.
-                                        // But wait, buildExportObject produces `jobs` as an object { jobName: jobData }.
-                                        // importWorkflow expects `data.jobs` to be object (jobId -> content) or array (if we changed it).
-                                        // importWorkflow: if (data.jobs) { Object.keys(data.jobs).forEach... }
-                                        // This works for object.
-                                        // However, `buildExportObject` constructs the final YAML-ready structure.
-                                        // `importWorkflow` is designed to import that structure.
-                                        // So using `buildExportObject()` is fine.
-            };
-
-            fetch('/save_session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dataToSave)
-            })
-            .then(r => r.json())
-            .then(data => {
-                if(data.error) {
-                    alert('Error saving: ' + data.error);
-                } else {
-                    alert('Work saved successfully!');
-                }
-            })
-            .catch(err => alert('Error saving: ' + err));
+            saveWork();
         });
     }
 
@@ -1511,8 +1505,73 @@ document.addEventListener('DOMContentLoaded', () => {
     const resumeModal = document.getElementById('resume-work-modal');
     const resumeList = document.getElementById('resume-list');
     const startNewBtn = document.getElementById('start-new-btn');
+    const closeResumeBtn = document.getElementById('close-resume-modal');
+    const resumeTitle = document.getElementById('resume-modal-title');
+    const resumeDesc = document.getElementById('resume-modal-desc');
+
+    // Unsaved Changes Modal Logic
+    const unsavedModal = document.getElementById('unsaved-changes-modal');
+    const ucCancelBtn = document.getElementById('uc-cancel-btn');
+    const ucDiscardBtn = document.getElementById('uc-discard-btn');
+    const ucSaveBtn = document.getElementById('uc-save-btn');
+    let pendingSessionId = null;
 
     if (resumeModal && resumeList) {
+        // Auto-open on load
+        openSavedWorkModal(false);
+
+        startNewBtn.addEventListener('click', () => {
+            resumeModal.style.display = 'none';
+        });
+
+        if (closeResumeBtn) {
+            closeResumeBtn.addEventListener('click', () => {
+                resumeModal.style.display = 'none';
+            });
+        }
+    }
+
+    if (loadWorkBtn) {
+        loadWorkBtn.addEventListener('click', () => {
+            openSavedWorkModal(true);
+        });
+    }
+
+    if (unsavedModal) {
+        ucCancelBtn.addEventListener('click', () => {
+            unsavedModal.style.display = 'none';
+        });
+
+        ucDiscardBtn.addEventListener('click', () => {
+            if (pendingSessionId) {
+                loadSession(pendingSessionId);
+                unsavedModal.style.display = 'none';
+                resumeModal.style.display = 'none';
+            }
+        });
+
+        ucSaveBtn.addEventListener('click', () => {
+            if (pendingSessionId) {
+                unsavedModal.style.display = 'none';
+                saveWork(() => {
+                    loadSession(pendingSessionId);
+                    resumeModal.style.display = 'none';
+                });
+            }
+        });
+    }
+
+    function openSavedWorkModal(isManual) {
+        if (!resumeModal) return;
+
+        if (isManual) {
+            if (resumeTitle) resumeTitle.textContent = "Load Saved Work";
+            if (resumeDesc) resumeDesc.textContent = "Select a session to load. You will be asked to save current changes.";
+        } else {
+            if (resumeTitle) resumeTitle.textContent = "Resume Work";
+            if (resumeDesc) resumeDesc.textContent = "We found unfinished work. Would you like to resume from where you left off?";
+        }
+
         // Fetch recent sessions
         fetch('/get_recent_sessions')
         .then(r => {
@@ -1524,26 +1583,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 resumeList.innerHTML = '';
                 sessions.forEach(session => {
                     const row = document.createElement('div');
-                    row.style = "padding: 10px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 5px; cursor: pointer; background: #fff;";
+                    row.style = "padding: 10px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 5px; cursor: pointer; background: #fff; display: flex; justify-content: space-between; align-items: center;";
                     row.onmouseover = () => row.style.background = '#f6f8fa';
                     row.onmouseout = () => row.style.background = '#fff';
                     
                     const date = new Date(session.timestamp).toLocaleString();
-                    row.innerHTML = `<strong>${session.name || 'Untitled'}</strong> <span style="font-size: 12px; color: #666;">(${date})</span>`;
                     
-                    row.onclick = () => {
-                        loadSession(session.id);
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style = "flex: 1;";
+                    infoDiv.innerHTML = `<strong>${session.name || 'Untitled'}</strong> <span style="font-size: 12px; color: #666;">(${date})</span>`;
+                    infoDiv.onclick = (e) => {
+                         if (isManual) {
+                             // Check for unsaved changes (always assume yes for manual load as per req)
+                             pendingSessionId = session.id;
+                             unsavedModal.style.display = 'block';
+                         } else {
+                             loadSession(session.id);
+                         }
                     };
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.style = "background: none; border: none; color: #999; font-size: 18px; cursor: pointer; padding: 0 5px; margin-right: 8px;";
+                    deleteBtn.title = "Delete Saved Work";
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation(); // Prevent loading
+                        if (confirm('Are you sure you want to delete this saved work?')) {
+                            deleteSession(session.id, row);
+                        }
+                    };
+                    
+                    row.appendChild(deleteBtn);
+                    row.appendChild(infoDiv);
                     resumeList.appendChild(row);
                 });
+                
+                // Only show if manual OR auto-open (which is default behavior if sessions exist)
+                // If auto-open is intended, we show it. 
+                // The caller controls when to call this. 
+                // However, on page load we call openSavedWorkModal(false).
+                // If no sessions, we shouldn't show it.
                 resumeModal.style.display = 'block';
+            } else {
+                if (isManual) alert("No saved sessions found.");
             }
         })
         .catch(err => console.error("Error fetching sessions", err));
-
-        startNewBtn.addEventListener('click', () => {
-            resumeModal.style.display = 'none';
-        });
     }
 
     function loadSession(sessionId) {
@@ -1555,13 +1640,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             if (data.data) {
-                // If data.data is string (json string), parse it. 
-                // But backend returns it as object in `to_dict`?
-                // `json.loads(self.data)` in backend `to_dict`. So it is object.
-                // However, the `data` field in the response contains the workflow object.
-                // Wait, `save_session` stores `request.json.data`.
-                // `buildExportObject` returns the workflow object.
-                // So `data.data` is the workflow object.
                 importWorkflow(data.data);
                 resumeModal.style.display = 'none';
                 
@@ -1570,6 +1648,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         })
         .catch(err => alert('Error loading session: ' + err));
+    }
+
+    function deleteSession(sessionId, rowElement) {
+        fetch('/delete_session/' + sessionId, {
+            method: 'DELETE'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                rowElement.remove();
+                // If no more items, hide modal? Or show message.
+                if (resumeList.children.length === 0) {
+                     resumeList.innerHTML = '<p style="color:#666; font-style:italic;">No saved work.</p>';
+                }
+            }
+        })
+        .catch(err => alert('Error deleting session: ' + err));
     }
 
     // Save Template (Download)
